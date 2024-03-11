@@ -1,4 +1,4 @@
-![Alt Text](lab_0/src/微信图片_20240311210444.jpg)
+![Alt Text] (lab_0/src/微信图片_20240311210444.jpg)
 
 ```C
 include <stdio.h>
