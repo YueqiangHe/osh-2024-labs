@@ -7,3 +7,5 @@ int main(
   return 0 ;
 )
 ```
+
+$$ e^{i\theta }=isin\theta +cos\theta $$
