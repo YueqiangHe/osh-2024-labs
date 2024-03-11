@@ -9,8 +9,8 @@ SRCS = main.cpp bubblesort.cpp bubblesort.h
 
 # 生成可执行文件
 $(TARGET): $(SRCS)
-    $(CC) $(CFLAGS) $(VERSION) -o $@ $^
+	$(CC) $(CFLAGS) $(VERSION) -o $@ $^
 
 # 清理文件
 clean:
-    rm -f $(TARGET)
+	rm -f $(TARGET)
