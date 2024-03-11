@@ -8,4 +8,6 @@ int main(
 )
 ```
 
-$ e^{i\theta }=isin\theta +cos\theta $
+$$
+e^{i\theta }=isin\theta +cos\theta 
+$$
