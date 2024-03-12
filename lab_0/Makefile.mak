@@ -5,7 +5,7 @@ VERSION = -std=c++11
 
 # 定义目标文件和源文件
 TARGET = bubble_sort
-SRCS = main.cpp bubblesort.cpp bubblesort.h
+SRCS = main.cpp bubblesort.cpp bubblesort.hpp
 
 # 生成可执行文件
 $(TARGET): $(SRCS)
