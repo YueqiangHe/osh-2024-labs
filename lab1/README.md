@@ -14,4 +14,4 @@
 ## phase 2 : 创建初始化内存盘  
 ![66f53a68cb1bc5cb60efa111c920b53](https://github.com/YueqiangHe/osh-2024-labs/assets/144820167/0ced590f-4e40-4d86-8295-4635aa2d7935)  
 可见编译成功  
-**思考题**我查阅了kernal panic，是指操作系统在监测到内部的致命错误, 并无法安全处理此错误时采取的动作.其次我查阅了initrd是Linux初始RAM磁盘（initrd）是在系统引导过程中挂载的一个临时根文件系统。之所以会出现kernal panic是因为编写的init.c作为整个系统的父进程，如果return 0，这个系统没有办法一直保持运行，那么就会出现此报错。  
+**思考题**：我查阅了kernal panic，是指操作系统在监测到内部的致命错误, 并无法安全处理此错误时采取的动作.其次我查阅了initrd是Linux初始RAM磁盘（initrd）是在系统引导过程中挂载的一个临时根文件系统。之所以会出现kernal panic是因为编写的init.c作为整个系统的父进程，如果return 0，这个系统没有办法一直保持运行，那么就会出现此报错。  
