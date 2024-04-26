@@ -39,7 +39,7 @@ volatile sig_atomic_t signal_flag = 0;
 void signalHandler(int signal);
 // 配置 sigaction
 void setupSigaction();
-std::vector<pid_t> background_pids;//设置后台进程组并且将所有的进程组数据都记录下来
+std::vector<pid_t> background_pids;//设置后台进程组并且将所有的进程组数据都记录下来,用来实现进程管理
 
 
 int main() {
@@ -110,6 +110,15 @@ int main() {
         continue;
       }
 
+      //处理wait内置命令
+      if( args[0] == "wait"){
+        for( auto i = 0 ; i < background_pids.size() ; i++ ){
+          wait(nullptr);//等待后台进程结束
+        }
+        background_pids.clear();//后台命令完全结束之后将后台命令完全清空
+        continue ;
+      }
+
       // 保存原始的标准输入/输出文件描述符
       int original_stdin = dup(STDIN_FILENO);
       int original_stdout = dup(STDOUT_FILENO);
@@ -147,15 +156,23 @@ std::vector<std::string> split(std::string s, const std::string &delimiter) {
 }
 
 void executeCommand(const std::vector<std::string>& args){//根据原本的框架复制的代码
-  // 处理外部命令
+    //处理&
+    bool have_background = false ;
+    std::vector<std::string> new_args = args ;
+    if(new_args.back() == "&"){
+      have_background = true ;
+      new_args.erase( new_args.end()-1 , new_args.end() );//删除&
+    }
+    
+    // 处理外部命令
     pid_t pid = fork();
     // std::vector<std::string> 转 char **
-    char *arg_ptrs[args.size() + 1];
-    for (auto i = 0; i < args.size(); i++) {
-      arg_ptrs[i] = (char*)args[i].c_str();
+    char *arg_ptrs[new_args.size() + 1];
+    for (auto i = 0; i < new_args.size(); i++) {
+      arg_ptrs[i] = (char*)new_args[i].c_str();
     }
     // exec p 系列的 argv 需要以 nullptr 结尾
-    arg_ptrs[args.size()] = nullptr;
+    arg_ptrs[new_args.size()] = nullptr;
 
     if (pid < 0) {
         perror("fork failed");
@@ -172,12 +189,14 @@ void executeCommand(const std::vector<std::string>& args){//根据原本的框�
       exit(255);
     }else if( pid > 0 ){
       // 这里只有父进程（原进程）才会进入
-      background_pids.push_back(pid);  // 保存子进程的PID，这样就可以在获取ctrl C的时候就可以关闭所有的子进程回到父进程了
-      // 等待子进程完成
-      int status;
-      pid_t ret = waitpid(pid, &status, 0); // 使用 waitpid 等待特定子进程
-      if (ret < 0) {
-        std::cout << "\nwait failed\n";
+      if( have_background ){//只有最后有&才需要
+        background_pids.push_back(pid);  // 将此进程加入后台进程
+      }else{
+        // 等待子进程完成
+        pid_t ret = wait(nullptr); // 使用 wait 等待子进程结束
+        if (ret < 0) {
+          std::cout << "\nwait failed\n";
+        }
       }
     }
 }
