@@ -15,10 +15,15 @@
 #include <cstring> // 为 strcat, strcpy, strlen 提供函数支持
 #include <algorithm> //为std::find提供头文件
 #include <fcntl.h>// open函数需要头文件
+#include <csignal> // 为处理信号提供支持
+#include <csetjmp> //为信号跳转提供头文件支持
 
 using namespace std ;
 
 #define MAX_SIZE 255
+
+
+sigjmp_buf jump_buffer;
 
 std::vector<std::string> split(std::string s, const std::string &delimiter);
 
@@ -28,70 +33,82 @@ void ParsePipe(const std::vector<std::string>& args);//管道函数
 
 void ParseRedirection(const std::vector<std::string>& args);
 
+// 定义全局变量，用于跟踪程序是否收到 Ctrl+C 信号。volatile 是 C/C++ 中的一个关键字，用来告诉编译器某个变量可能会在程序之外的其他地方被修改。。这个地方可能是信号处理程序、硬件中断，或者多线程环境下的其他线程。
+volatile sig_atomic_t signal_flag = 0;
+// 信号处理函数
+void signalHandler(int signal);
+// 配置 sigaction
+void setupSigaction();
+std::vector<pid_t> background_pids;//设置后台进程组并且将所有的进程组数据都记录下来
+
 
 int main() {
   // 不同步 iostream 和 cstdio 的 buffer
   std::ios::sync_with_stdio(false);
 
+  setupSigaction(); // 配置信号处理，即Sigaction结构体
+
   // 用来存储读入的一行命令
   std::string cmd;
   while (true) {
-    // 打印提示符
-    std::cout << "$ ";
+    if (sigsetjmp(jump_buffer, 1) == 0){ // 设置跳转点
+      // 打印提示符
+      std::cout << "$ ";
 
-    // 读入一行。std::getline 结果不包含换行符。
-    std::getline(std::cin, cmd);
+      
+      // 读入一行。std::getline 结果不包含换行符。
+      std::getline(std::cin, cmd);
 
-    // 按空格分割命令为单词
-    std::vector<std::string> args = split(cmd, " ");
+      // 按空格分割命令为单词
+      std::vector<std::string> args = split(cmd, " ");
 
-    // 没有可处理的命令
-    if (args.empty()) {
-      continue;
-    }
-
-    // 退出
-    if (args[0] == "exit") {
-      if (args.size() <= 1) {
-        return 0;
-      }
-
-      // std::string 转 int
-      std::stringstream code_stream(args[1]);
-      int code = 0;
-      code_stream >> code;
-
-      // 转换失败
-      if (!code_stream.eof() || code_stream.fail()) {
-        std::cout << "Invalid exit code\n";
+      // 没有可处理的命令
+      if (args.empty()) {
         continue;
       }
 
-      return code;
-    }
+      // 退出
+      if (args[0] == "exit") {
+        if (args.size() <= 1) {
+          return 0;
+        }
 
-    if (args[0] == "pwd") {
-      if( args.size() == 1 ){
-        char path[ MAX_SIZE ];
-        getcwd( path , sizeof( path ) );//通过getcwd()函数来读取当前路径
-        printf( "%s\n",path );
+        // std::string 转 int
+        std::stringstream code_stream(args[1]);
+        int code = 0;
+        code_stream >> code;
+
+        // 转换失败
+        if (!code_stream.eof() || code_stream.fail()) {
+          std::cout << "Invalid exit code\n";
+          continue;
+        }
+
+        return code;
+      }
+
+      if (args[0] == "pwd") {
+        if( args.size() == 1 ){
+          char path[ MAX_SIZE ];
+          getcwd( path , sizeof( path ) );//通过getcwd()函数来读取当前路径
+          printf( "%s\n",path );
+          continue;
+        }
+        else{
+          std::cout<<"Input Fault"<<std::endl ;//输入错误
+          continue;
+        }
+      }
+
+      if (args[0] == "cd") {
+        if( args.size() == 2){
+          chdir( args[1].c_str() );
+        }
+        else{
+          std::cout<<"Input Fault"<<std::endl ;//输入格式错误
+        }
         continue;
       }
-      else{
-        std::cout<<"Input Fault"<<std::endl ;//输入错误
-        continue;
-      }
-    }
-
-    if (args[0] == "cd") {
-      if( args.size() == 2){
-        chdir( args[1].c_str() );
-      }
-      else{
-        std::cout<<"Input Fault"<<std::endl ;//输入格式错误
-      }
-      continue;
-    }
 
       // 保存原始的标准输入/输出文件描述符
       int original_stdin = dup(STDIN_FILENO);
@@ -105,9 +122,14 @@ int main() {
       close(original_stdin);
       close(original_stdout);
       //只有这样才能让输入/输出流没有问题，这样才可以正确使用getline()
-
+    }else{
+      // 如果跳转回来，表示收到 SIGINT
+      std::cout << "\n"; // 表示捕获了信号
+      continue ;
+    }
   }
 }
+
 
 // 经典的 cpp string split 实现
 // https://stackoverflow.com/a/14266139/11691878
@@ -124,7 +146,7 @@ std::vector<std::string> split(std::string s, const std::string &delimiter) {
   return res;
 }
 
-void executeCommand(const std::vector<std::string>& args){
+void executeCommand(const std::vector<std::string>& args){//根据原本的框架复制的代码
   // 处理外部命令
     pid_t pid = fork();
     // std::vector<std::string> 转 char **
@@ -150,9 +172,12 @@ void executeCommand(const std::vector<std::string>& args){
       exit(255);
     }else if( pid > 0 ){
       // 这里只有父进程（原进程）才会进入
-      int ret = wait(nullptr);
+      background_pids.push_back(pid);  // 保存子进程的PID，这样就可以在获取ctrl C的时候就可以关闭所有的子进程回到父进程了
+      // 等待子进程完成
+      int status;
+      pid_t ret = waitpid(pid, &status, 0); // 使用 waitpid 等待特定子进程
       if (ret < 0) {
-        std::cout << "wait failed";
+        std::cout << "\nwait failed\n";
       }
     }
 }
@@ -201,44 +226,39 @@ void ParseRedirection(const std::vector<std::string>& args){
   int fd_out = -1 ;//输出文件描述符
 
   if( it_out != args.end() ){//>存在
-    fd_out = open((*(it_out + 1)).c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0777);
+    fd_out = open((*(it_out + 1)).c_str(), O_WRONLY | O_CREAT | O_TRUNC, 777);
     /*O_WRONLY：这表示文件只可写。这种模式下，尝试读取文件会导致错误。
     O_CREAT：这意味着如果文件不存在，则创建它。这个标志通常用于确保在试图打开文件时，如果该文件不存在，系统会创建它，而不是报错。
     O_TRUNC：这个标志表示如果文件存在，在打开时将其内容截断到0长度。这意味着文件内容会被清空。这个标志与 O_WRONLY 一起使用时，通常用于确保在写入文件时，旧内容不会保留下来。
     权限模式的前三位分别表示用户（文件所有者）、用户组和其他人的权限。
-    6 表示读和写权限 (4 是读权限，2 是写权限)。
-    4 表示只有读权限。
     */
    if( fd_out < 0 ) std::cout<<"打开文件失败"<<std::endl ;
   }
 
   if( it_append != args.end() ){//>>存在
-    fd_out = open((*(it_append + 1)).c_str(), O_WRONLY | O_CREAT | O_APPEND, 0777);
+    fd_out = open((*(it_append + 1)).c_str(), O_WRONLY | O_CREAT | O_APPEND, 777);
     /*O_WRONLY：这表示文件只可写。这种模式下，尝试读取文件会导致错误。
     O_CREAT：这意味着如果文件不存在，则创建它。这个标志通常用于确保在试图打开文件时，如果该文件不存在，系统会创建它，而不是报错。
     O_APPEND：打开文件时，所有写入操作都会自动追加到文件的末尾。
     权限模式的前三位分别表示用户（文件所有者）、用户组和其他人的权限。
-    6 表示读和写权限 (4 是读权限，2 是写权限)。
-    4 表示只有读权限。
     */
    if( fd_out < 0 ) std::cout<<"打开文件失败"<<std::endl ;
   }
 
   if( it_in != args.end() ){//<存在
     fd_in = open((*(it_in + 1)).c_str(), O_RDONLY);
-    /*O_RDONLY：只读
-    */
+    /*O_RDONLY：只读*/
    if( fd_in < 0 ) std::cout<<"打开文件失败"<<std::endl ;
   }
 
   // 重定向标准输出
-  if (fd_out != -1) {
+  if (fd_out != -1) {//需要输出
       dup2(fd_out, STDOUT_FILENO);//对输出进行重定向
       close(fd_out); // 关闭不再需要的文件描述符
   }
 
   // 重定向标准输入
-  if (fd_in != -1) {
+  if (fd_in != -1) {//需要输入
       dup2(fd_in, STDIN_FILENO);//对输入进行重定向
       close(fd_in); // 关闭不再需要的文件描述符
   }
@@ -264,3 +284,43 @@ void ParseRedirection(const std::vector<std::string>& args){
 
   executeCommand( newcmd );
 }
+
+void signalHandler( int signal ){
+  // 终止所有子进程
+  if (signal == SIGINT) {
+        siglongjmp(jump_buffer, 1);//利用跳转函数捕获后直接跳转到相应地方
+    }
+}
+
+//设置 SIGINT 信号的处理方式，即配置Sigaction结构体。
+void setupSigaction(){
+  /*
+  sigaction结构体成员：
+  sa_handler成员：
+  对捕获的信号进行处理的函数，函数参数为sigaction函数的参数1信号（概念上等同于单独使用signal函数）
+  也可以设置为后面两个常量：常数SIG_IGN(向内核表示忽略此信号)或是常数SIG_DFL(表示接到此信号后的动作是系统默认动作)
+  sa_mask成员：
+  功能：sa_mask是一个信号集，当接收到某个信号，并且调用sa_handler函数对信号处理之前，把该信号集里面的信号加入到进程的信号屏蔽字当中，当sa_handler函数执行完之后，这个信号集中的信号又会从进程的信号屏蔽字中移除
+  为什么这样设计？？这样保证了当正在处理一个信号时，如果此种信号再次发生，信号就会阻塞。如果阻塞期间产生了多个同种类型的信号，那么当sa_handler处理完之后。进程又只接受一个这种信号
+  即使没有信号需要屏蔽，也要初始化这个成员（sigemptyset()），不能保证sa_mask=0会做同样的事情
+  sigset_t数据类型见文章：https://blog.csdn.net/qq_41453285/article/details/89228297
+  sa_restorer成员：
+  已经被抛弃了，不再使用
+  sa_flags成员：
+  指定了对信号进行哪些特殊的处理
+  */
+  struct sigaction action ;//用于指定信号处理的相关信息。
+  signal(SIGTTOU, SIG_IGN);//忽略 SIGTTOU 信号。使用 SIG_IGN 可以让程序忽略特定信号。通常用于信号可能导致程序不必要中断或终止的场景。
+  std::memset(&action, 0, sizeof(action)); // 清空结构体,防止旧值影响
+  action.sa_handler = signalHandler ;//设置信号处理函数为signalHandler，这样就可以处理SIGINT信号的函数了
+  sigemptyset(&action.sa_mask);
+  action.sa_flags = 0 ;//信号处理结构的其他选项没有特殊标志
+  sigaction(SIGINT, &action, nullptr);
+  /*
+  sigaction函数：
+  参数1：要捕获的信号
+  参数2：接收到信号之后对信号进行处理的结构体
+  参数3：接收到信号之后，保存原来对此信号处理的各种方式与信号（可用来做备份）。如果不需要备份，此处可以填NULL
+  */
+}
+
