@@ -17,6 +17,7 @@
 #include <fcntl.h>// open函数需要头文件
 #include <csignal> // 为处理信号提供支持
 #include <csetjmp> //为信号跳转提供头文件支持
+#include <queue> //利用队列支持读取历史功能
 
 using namespace std ;
 
@@ -48,8 +49,11 @@ int main() {
 
   setupSigaction(); // 配置信号处理，即Sigaction结构体
 
+  std::vector<std::string> st_cmd ;
   // 用来存储读入的一行命令
   std::string cmd;
+  int count = 0 ;//用来记录命令的数量
+
   while (true) {
     if (sigsetjmp(jump_buffer, 1) == 0){ // 设置跳转点
       // 打印提示符
@@ -58,9 +62,47 @@ int main() {
       
       // 读入一行。std::getline 结果不包含换行符。
       std::getline(std::cin, cmd);
-
       // 按空格分割命令为单词
       std::vector<std::string> args = split(cmd, " ");
+
+    if( args[0][0] != '!'){
+      st_cmd.push_back(cmd) ;//将命令存入历史命令中,这样防止"!!"的死循环产生
+      count++ ;//命令数量加一
+    }
+revise :
+
+      if( args[0] == "!!" ){
+        std::cout<<st_cmd[count-1]<<std::endl ;//输出最后一条命令
+        cmd = st_cmd[count-1] ;//将最后一条命令赋值给cmd
+        args = split(cmd, " ");//将最后一条命令分割
+        goto revise ;
+      }
+
+      if( args[0][0] == '!'){
+        int num = 0 ;
+        for( int i = 1 ; i < args[0].size() ; i++ ){
+          num = num * 10 + int(args[0][i]) - '0' ;//将输入的数字转换为整数
+        }
+        std::cout<<st_cmd[num]<<std::endl ;//输出历史命令
+        cmd = st_cmd[num] ;//将历史命令赋值给cmd
+        args = split(cmd, " ");//将历史命令分割
+        goto revise ;
+      }
+
+      //支持历史功能
+      if( args[0] == "history" ){
+        int num = int(args[1][0]) - '0' ;//将输入的数字转换为整数
+        if( num > count ){
+          std::cout<<num << "is too large"<<std::endl ;//输出错误信息
+          continue;
+        }
+        for( int i = 0 ; i < num ; i++ ){
+          std::cout<<count - i - 1 << " " << std::endl ;//输出历史命令的序号
+          std::cout<<st_cmd[count - i - 1 ] << std::endl ;//输出历史命令
+        }
+        continue;
+      }
+
 
       // 没有可处理的命令
       if (args.empty()) {
@@ -161,7 +203,7 @@ void executeCommand(const std::vector<std::string>& args){//根据原本的框�
     std::vector<std::string> new_args = args ;
     if(new_args.back() == "&"){
       have_background = true ;
-      new_args.erase( new_args.end()-1 , new_args.end() );//删除&
+      new_args.erase( new_args.end()-1 , new_args.end() );//利用erase删除&
     }
     
     // 处理外部命令
