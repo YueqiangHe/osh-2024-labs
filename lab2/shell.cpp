@@ -146,6 +146,9 @@ revise :
         if( args.size() == 2){
           chdir( args[1].c_str() );
         }
+        else if( args.size() == 1 ){
+          chdir( getenv("HOME") );//C 库函数 char *getenv(const char *name) 搜索 name 所指向的环境字符串，并返回相关的值给字符串。
+        }
         else{
           std::cout<<"Input Fault"<<std::endl ;//输入格式错误
         }
