@@ -10,7 +10,7 @@
 
 运行结果：
 
-![image-20240430071820573](C:\Users\Admin\AppData\Roaming\Typora\typora-user-images\image-20240430071820573.png)
+![image](https://github.com/YueqiangHe/osh-2024-labs/assets/144820167/4a844f8c-ad01-4f1c-81cf-1cb1cd1aa284)
 
 2、cd
 
@@ -18,7 +18,8 @@
 
 运行示例：
 
-![image-20240430072023242](C:\Users\Admin\AppData\Roaming\Typora\typora-user-images\image-20240430072023242.png)
+![image](https://github.com/YueqiangHe/osh-2024-labs/assets/144820167/43a53448-be64-4608-a9ca-8ba8784b92d0)
+
 
 3、【选做】实现cd在没有第二个参数时，默认进入家目录
 
@@ -26,7 +27,8 @@
 
 运行示例：
 
-![image-20240430072235777](C:\Users\Admin\AppData\Roaming\Typora\typora-user-images\image-20240430072235777.png)
+![image](https://github.com/YueqiangHe/osh-2024-labs/assets/144820167/baa46eff-62c8-4ddf-8bdf-c10f8914787b)
+
 
 #### 二、管道
 
@@ -40,11 +42,11 @@
 
 ​	单个管道：
 
-![image-20240430073055048](C:\Users\Admin\AppData\Roaming\Typora\typora-user-images\image-20240430073055048.png)
+![image](https://github.com/YueqiangHe/osh-2024-labs/assets/144820167/bfa9df99-4cf5-4803-bf96-7c1fa24e637a)
 
 ​	多个管道：
 
-![image-20240430073106556](C:\Users\Admin\AppData\Roaming\Typora\typora-user-images\image-20240430073106556.png)
+![image](https://github.com/YueqiangHe/osh-2024-labs/assets/144820167/fed2b745-818d-4edf-90a8-efcc403fe954)
 
 #### 三、重定向
 
@@ -58,15 +60,17 @@
 
 ​	支持 `>` 重定向：
 
-![image-20240430073850139](C:\Users\Admin\AppData\Roaming\Typora\typora-user-images\image-20240430073850139.png)
+![image](https://github.com/YueqiangHe/osh-2024-labs/assets/144820167/ab8a335d-76b0-4abe-8380-0bfe83852fd0)
+
 
 ​	支持`>>`  重定向：
 
-![image-20240430073932224](C:\Users\Admin\AppData\Roaming\Typora\typora-user-images\image-20240430073932224.png)
+![image](https://github.com/YueqiangHe/osh-2024-labs/assets/144820167/3ffc6bfc-f244-4858-958e-14feb6296f02)
+
 
 ​	支持 `<` 重定向：
 
-![image-20240430073943140](C:\Users\Admin\AppData\Roaming\Typora\typora-user-images\image-20240430073943140.png)
+![image](https://github.com/YueqiangHe/osh-2024-labs/assets/144820167/9b56d269-d196-4212-8a66-312550163a25)
 
 #### 四、信号处理
 
@@ -76,7 +80,7 @@
 
 运行结果：
 
-![image-20240430074723588](C:\Users\Admin\AppData\Roaming\Typora\typora-user-images\image-20240430074723588.png)
+![image](https://github.com/YueqiangHe/osh-2024-labs/assets/144820167/5faa14a1-8213-40d6-8172-1b3e5703696b)
 
 #### 五、前后台进程
 
@@ -84,7 +88,8 @@
 
 运行结果：
 
-![image-20240430094304021](C:\Users\Admin\AppData\Roaming\Typora\typora-user-images\image-20240430094304021.png)
+![image](https://github.com/YueqiangHe/osh-2024-labs/assets/144820167/7fe393ce-0a85-4fc3-ba4b-88dfe1756add)
+
 
 wait之后执行还未结束的sleep 10命令
 
@@ -92,6 +97,7 @@ wait之后执行还未结束的sleep 10命令
 
 支持history :
 
-<img src="C:\Users\Admin\AppData\Roaming\Typora\typora-user-images\image-20240430094749005.png" alt="image-20240430094749005" style="zoom: 80%;" />
+![image](https://github.com/YueqiangHe/osh-2024-labs/assets/144820167/99ae7269-53da-4b4d-804d-47792b9574a8)
+
 
 可以看出是按照`history，!!，!n`运行正确
